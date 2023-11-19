@@ -4,6 +4,9 @@
 
 FROM rust:1.74 as builder
 
+# Ensure musl-tools is installed
+RUN USER=root apt update && apt install musl-tools -y
+
 # Initialize cargo project
 RUN USER=root cargo new --bin server
 WORKDIR /server
