@@ -11,5 +11,4 @@ images:
   newTag: main
 resources:
 - ./00_namespace.yaml
-- ./10_server.Service.yaml
 - ../../deploy

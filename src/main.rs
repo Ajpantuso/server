@@ -2,14 +2,12 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-mod command;
-mod server;
-
 use clap::Parser;
+use server::{Command, Options};
 
 #[tokio::main]
 async fn main() {
-    let opts = command::Options::parse();
+    let opts = Options::parse();
 
-    command::Command::from_options(&opts).run().await;
+    Command::from_options(&opts).run().await;
 }

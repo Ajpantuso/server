@@ -8,3 +8,4 @@ commonLabels:
   app.kubernetes.io/name: server
 resources:
 - 10_server.Deployment.yaml
+- 10_server.Service.yaml
