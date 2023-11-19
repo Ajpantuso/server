@@ -9,6 +9,9 @@ images:
 - name: server
   newName: ghcr.io/ajpantuso/server
   newTag: main
+patchesStrategicMerge:
+- ./10_server.Deployment.patch.yaml
 resources:
 - ./00_namespace.yaml
+- ./10_server.Service.yaml
 - ../../deploy

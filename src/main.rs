@@ -7,6 +7,8 @@ use server::{Command, Options};
 
 #[tokio::main]
 async fn main() {
+    env_logger::init();
+
     let opts = Options::parse();
 
     Command::from_options(&opts).run().await;

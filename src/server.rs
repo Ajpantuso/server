@@ -2,6 +2,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+use log::{debug, info};
 use rust_embed::RustEmbed;
 use std::{net::SocketAddr, path::Path};
 use tokio::signal;
@@ -62,17 +63,31 @@ struct TLSOptions<'a> {
 
 impl<'a> Server<'a> {
     pub async fn serve(&self) {
+        let log = warp::log("server::site");
+
+        debug!("loading index.html");
+
         let raw_index = Assets::get("html/index.html").unwrap();
         let index = std::str::from_utf8(raw_index.data.as_ref())
             .unwrap()
             .to_string();
 
+        debug!("registering routes");
+
         let root = warp::path::end()
             .map(move || warp::reply::html(index.clone()))
-            .or(warp::path!("readyz").map(readyz));
+            .or(warp::path!("healthz").map(healthz))
+            .or(warp::path!("readyz").map(readyz))
+            .with(log);
 
         match &self.tls_options {
             Some(opts) => {
+                debug!(
+                    "using TLS with key {} and cert {}",
+                    opts.key_path.display(),
+                    opts.cert_path.display()
+                );
+
                 let srv = warp::serve(root)
                     .tls()
                     .key_path(opts.key_path)
@@ -93,10 +108,16 @@ impl<'a> Server<'a> {
                         .expect("attempting graceful shutdown")
                 });
 
+                info!("starting server on address {}", self.address);
+
                 srv.await;
             }
         }
     }
+}
+
+fn healthz() -> String {
+    "ok".into()
 }
 
 fn readyz() -> String {

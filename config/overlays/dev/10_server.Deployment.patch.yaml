@@ -1,0 +1,16 @@
+# SPDX-FileCopyrightText: 2023 Andrew Pantuso <ajpantuso@gmail.com>
+#
+# SPDX-License-Identifier: Apache-2.0
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: server
+spec:
+  template:
+    spec:
+      containers:
+      - name: server
+        env:
+          - name: "RUST_LOG"
+            value: "debug"
