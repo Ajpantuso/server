@@ -34,12 +34,12 @@ impl<'a> ServerBuilder<'a> {
         self
     }
     pub fn build(self) -> Server<'a> {
-        if self.cert_path.is_some() && self.key_path.is_some() {
+        if let (Some(cert_path), Some(key_path)) = (self.cert_path, self.key_path) {
             Server {
                 address: self.listen_addr,
                 tls_options: Some(TLSOptions {
-                    key_path: self.key_path.unwrap(),
-                    cert_path: self.cert_path.unwrap(),
+                    key_path,
+                    cert_path,
                 }),
             }
         } else {
@@ -62,15 +62,13 @@ struct TLSOptions<'a> {
 }
 
 impl<'a> Server<'a> {
-    pub async fn serve(&self) {
+    pub async fn serve(&self) -> anyhow::Result<()> {
         let log = warp::log("server::site");
 
         debug!("loading index.html");
 
         let raw_index = Assets::get("html/index.html").unwrap();
-        let index = std::str::from_utf8(raw_index.data.as_ref())
-            .unwrap()
-            .to_string();
+        let index = std::str::from_utf8(raw_index.data.as_ref())?.to_string();
 
         debug!("registering routes");
 
@@ -79,6 +77,8 @@ impl<'a> Server<'a> {
             .or(warp::path!("healthz").map(healthz))
             .or(warp::path!("readyz").map(readyz))
             .with(log);
+
+        info!("starting server on address {}", self.address);
 
         match &self.tls_options {
             Some(opts) => {
@@ -95,7 +95,7 @@ impl<'a> Server<'a> {
                 let (_addr, srv) = srv.bind_with_graceful_shutdown(self.address, async move {
                     signal::ctrl_c()
                         .await
-                        .expect("attempting graceful shutdown")
+                        .expect("failed to shutdown gracefully")
                 });
 
                 srv.await;
@@ -105,14 +105,14 @@ impl<'a> Server<'a> {
                 let (_addr, srv) = srv.bind_with_graceful_shutdown(self.address, async move {
                     signal::ctrl_c()
                         .await
-                        .expect("attempting graceful shutdown")
+                        .expect("failed to shutdown gracefully")
                 });
-
-                info!("starting server on address {}", self.address);
 
                 srv.await;
             }
         }
+
+        Ok(())
     }
 }
 

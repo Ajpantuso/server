@@ -15,7 +15,7 @@ impl<'a> Command<'a> {
     pub fn from_options(options: &'a Options) -> Self {
         Self { options }
     }
-    pub async fn run(&self) {
+    pub async fn run(&self) -> anyhow::Result<()> {
         match &self.options.sub_options {
             SubOptions::Serve {
                 listen_addr,
@@ -33,7 +33,7 @@ impl<'a> Command<'a> {
 
                 let srv = builder.build();
 
-                srv.serve().await;
+                srv.serve().await
             }
         }
     }
