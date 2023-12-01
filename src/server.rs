@@ -23,30 +23,31 @@ pub struct ServerBuilder<'a> {
 }
 
 impl<'a> ServerBuilder<'a> {
-    pub fn cert_path(mut self, cert_path: &'a impl AsRef<Path>) -> Self {
-        self.cert_path = Some(cert_path.as_ref());
-
-        self
+    pub fn cert_path(self, cert_path: &'a impl AsRef<Path>) -> Self {
+        Self {
+            cert_path: Some(cert_path.as_ref()),
+            ..self
+        }
     }
-    pub fn key_path(mut self, key_path: &'a impl AsRef<Path>) -> Self {
-        self.key_path = Some(key_path.as_ref());
-
-        self
+    pub fn key_path(self, key_path: &'a impl AsRef<Path>) -> Self {
+        Self {
+            key_path: Some(key_path.as_ref()),
+            ..self
+        }
     }
     pub fn build(self) -> Server<'a> {
-        if let (Some(cert_path), Some(key_path)) = (self.cert_path, self.key_path) {
-            Server {
+        match (self.cert_path, self.key_path) {
+            (Some(cert_path), Some(key_path)) => Server {
                 address: self.listen_addr,
                 tls_options: Some(TLSOptions {
                     key_path,
                     cert_path,
                 }),
-            }
-        } else {
-            Server {
+            },
+            _ => Server {
                 address: self.listen_addr,
                 tls_options: None,
-            }
+            },
         }
     }
 }
@@ -54,11 +55,6 @@ impl<'a> ServerBuilder<'a> {
 pub struct Server<'a> {
     address: SocketAddr,
     tls_options: Option<TLSOptions<'a>>,
-}
-
-struct TLSOptions<'a> {
-    key_path: &'a Path,
-    cert_path: &'a Path,
 }
 
 impl<'a> Server<'a> {
@@ -74,8 +70,8 @@ impl<'a> Server<'a> {
 
         let root = warp::path::end()
             .map(move || warp::reply::html(index.clone()))
-            .or(warp::path!("healthz").map(healthz))
-            .or(warp::path!("readyz").map(readyz))
+            .or(warp::path!("healthz").and(healthz()))
+            .or(warp::path!("readyz").and(readyz()))
             .with(log);
 
         info!("starting server on address {}", self.address);
@@ -116,14 +112,42 @@ impl<'a> Server<'a> {
     }
 }
 
-fn healthz() -> String {
-    "ok".into()
+fn healthz() -> impl Filter<Extract = (String,), Error = warp::Rejection> + Copy {
+    warp::get().map(|| "ok".into())
 }
 
-fn readyz() -> String {
-    "ok".into()
+fn readyz() -> impl Filter<Extract = (String,), Error = warp::Rejection> + Copy {
+    warp::get().map(|| "ok".into())
 }
 
 #[derive(RustEmbed)]
 #[folder = "assets"]
 struct Assets;
+
+struct TLSOptions<'a> {
+    key_path: &'a Path,
+    cert_path: &'a Path,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{healthz, readyz};
+    use warp::test::request;
+
+    #[tokio::test]
+    async fn healthz_reply() {
+        let filter = healthz();
+        let res = request().method("GET").reply(&filter).await;
+
+        assert_eq!(200, res.status());
+        assert_eq!("ok", res.body());
+    }
+    #[tokio::test]
+    async fn readyz_reply() {
+        let filter = readyz();
+        let res = request().method("GET").reply(&filter).await;
+
+        assert_eq!(200, res.status());
+        assert_eq!("ok", res.body());
+    }
+}
