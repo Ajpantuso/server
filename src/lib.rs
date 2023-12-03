@@ -25,11 +25,11 @@ impl<'a> Command<'a> {
                 let mut builder = server::build(*listen_addr);
 
                 if let Some(path) = cert_path {
-                    builder = builder.cert_path(path)
-                }
+                    builder = builder.cert_path(path);
+                };
                 if let Some(path) = key_path {
-                    builder = builder.key_path(path)
-                }
+                    builder = builder.key_path(path);
+                };
 
                 let srv = builder.build();
 
