@@ -1,0 +1,76 @@
+# SPDX-FileCopyrightText: 2024 Andrew Pantuso <ajpantuso@gmail.com>
+#
+# SPDX-License-Identifier: Apache-2.0
+
+# Declare tools to install using built-in or additional plug-ins
+[tools]
+# Tools can be cli utilities
+pre-commit = "latest"
+# Or runtimes/compliers/interpreters.
+# Additional options can be provided for each plug-in
+# besides just the tool version. In this case the
+# `virtualenv` option allows you to define a custom
+# path where a venv can be automatically created for
+# your project
+python = { version="3.12", virtualenv=".venv" }
+# Forges will even allow you to install tools
+# from package managers like npm, cargo, or `go install`
+"go:sigs.k8s.io/kustomize/kustomize/v5" = "latest"
+
+# Similar to direnv environment variables can be exported
+# while in a project's working directories.
+# It is also possible to use a superceeding local file
+# `.mise.local.toml` to add/override project vars.
+# Profiles can also be used to create overrides for
+# special environments (like running in CI).
+[env]
+# Env values are templatable using the `{{ }}` syntax.
+# `config_root` is a var substituted by Mise itself
+# that refers to the project root relative to this
+# config file
+MISE_PYTHON_DEFAULT_PACKAGES_FILE = "{{ [config_root, '.default-python-packages'] | join_path }}"
+
+# Tasks can be defined similar to Make or
+# other task runners. Sources and Outputs
+# help optimize task runs to only run
+# when the sources have been updated since
+# the lastest outputs were created/modified
+[tasks.build]
+run = "cargo build --color=always --all-features"
+sources = ["Cargo.*", "src/**/*.rs"]
+outputs = ["target/debug/server"]
+
+# Tasks can also depend on other tasks and
+# can even be specified via glob expressions
+[tasks.lint]
+depends = [ "lint:*" ]
+
+[tasks."lint:fmt"]
+run = "cargo fmt"
+
+[tasks."lint:clippy"]
+run = "cargo clippy --all-targets --all-features"
+
+# Tasks are run from a shell instance and therefore
+# can be written as multi-line scripts as well.
+[tasks.add-license]
+run = """
+    #!/usr/bin/env bash
+
+    reuse annotate \
+    --copyright 'Andrew Pantuso <ajpantuso@gmail.com>' \
+    --license Apache-2.0 \
+    --year 2024 $@
+    """
+
+[tasks."test:units"]
+run = "cargo test --verbose"
+
+[tasks."hooks:install"]
+run = "pre-commit install"
+
+[tasks."hooks:run"]
+run = "pre-commit run --show-diff-on-failure --from-ref origin/main --to-ref HEAD"
+
+[tasks."generate:manifests"]
+run = "kustomize build"
